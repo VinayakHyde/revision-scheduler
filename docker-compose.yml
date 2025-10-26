@@ -1,0 +1,38 @@
+services:
+  # MongoDB database service
+  mongodb:
+    image: mongo:7
+    container_name: revision-scheduler-mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_DATABASE=revision-scheduler
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Node.js application service
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: revision-scheduler-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - NODE_ENV=production
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+# Named volumes for persistent data
+volumes:
+  mongodb_data:
+    driver: local

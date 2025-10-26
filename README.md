@@ -14,11 +14,21 @@ A spaced repetition web app using the FSRS algorithm to help you remember what y
 
 ## Prerequisites
 
+### Option 1: Docker (Recommended)
+- Docker and Docker Compose installed
+- That's it! MongoDB is included in the Docker setup
+
+### Option 2: Manual Setup
 - Node.js (v18 or higher)
 - MongoDB running locally on `mongodb://localhost:27017`
   - Or modify the connection string in `db.js`
 
 ## Installation
+
+### For Docker Setup
+No installation needed! Jump straight to "Running the App" section.
+
+### For Manual Setup
 
 1. Install MongoDB if you haven't already:
    ```bash
@@ -30,12 +40,45 @@ A spaced repetition web app using the FSRS algorithm to help you remember what y
    mongod --dbpath /path/to/data/directory
    ```
 
-2. Dependencies are already installed, but if needed:
+2. Install dependencies:
    ```bash
    npm install
    ```
 
 ## Running the App
+
+### Option 1: Docker (Recommended)
+
+The easiest way to run the app is using Docker, which handles all dependencies including MongoDB.
+
+**Start the application:**
+```bash
+docker-compose up -d
+```
+
+Then open your browser to: **http://localhost:3000**
+
+**View logs:**
+```bash
+docker-compose logs -f app
+```
+
+**Stop the application** (data is preserved):
+```bash
+docker-compose down
+```
+
+**Restart after stopping:**
+```bash
+docker-compose up -d
+```
+
+**Clean up everything** (⚠️ this will delete all your cards and topics):
+```bash
+docker-compose down -v
+```
+
+### Option 2: Manual Setup
 
 Start the server:
 ```bash
