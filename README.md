@@ -81,6 +81,17 @@ The Free Spaced Repetition Scheduler (FSRS) algorithm:
 - Calculates optimal review intervals based on your ratings
 - Improves retention while minimizing review time
 
+### FSRS Attribution
+
+This project uses the **FSRS (Free Spaced Repetition Scheduler)** algorithm, an open-source spaced repetition algorithm developed by the [Open Spaced Repetition](https://github.com/open-spaced-repetition) community.
+
+- **FSRS Repository**: [github.com/open-spaced-repetition/free-spaced-repetition-scheduler](https://github.com/open-spaced-repetition/free-spaced-repetition-scheduler)
+- **TypeScript/JavaScript Implementation**: [ts-fsrs](https://github.com/open-spaced-repetition/ts-fsrs)
+- **License**: MIT
+- **Paper**: [A Stochastic Shortest Path Algorithm for Optimizing Spaced Repetition Scheduling](https://www.maimemo.com/paper/)
+
+FSRS is based on the DSR (Difficulty, Stability, Retrievability) model and represents a modern, scientifically-backed approach to spaced repetition learning.
+
 ## MongoDB Schema
 
 Cards are stored with the following structure:
