@@ -1,0 +1,19 @@
+{
+  "name": "revision-scheduler",
+  "version": "1.0.0",
+  "description": "Spaced repetition revision scheduler with FSRS algorithm",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["spaced-repetition", "fsrs", "revision", "learning"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongodb": "^6.3.0",
+    "ts-fsrs": "^4.1.0"
+  }
+}

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#ff6b35;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#f7931e;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Background circle -->
+  <circle cx="50" cy="50" r="48" fill="url(#bg)" stroke="#fff" stroke-width="2"/>
+
+  <!-- Om symbol (ॐ) - representing Lord Ganesha and wisdom -->
+  <text x="50" y="40" font-size="35" font-weight="bold" fill="white" text-anchor="middle" font-family="serif">ॐ</text>
+
+  <!-- Book symbol - representing Ma Saraswati (goddess of knowledge) -->
+  <g transform="translate(50, 60)">
+    <!-- Book base -->
+    <rect x="-15" y="0" width="30" height="20" fill="white" rx="2"/>
+    <rect x="-15" y="0" width="30" height="3" fill="#ffd700"/>
+    <!-- Book pages -->
+    <line x1="-15" y1="6" x2="15" y2="6" stroke="#ff6b35" stroke-width="1"/>
+    <line x1="-15" y1="10" x2="15" y2="10" stroke="#ff6b35" stroke-width="1"/>
+    <line x1="-15" y1="14" x2="15" y2="14" stroke="#ff6b35" stroke-width="1"/>
+    <!-- Book spine -->
+    <line x1="0" y1="0" x2="0" y2="20" stroke="#f7931e" stroke-width="1.5"/>
+  </g>
+
+  <!-- Small lotus petals (symbol of purity and wisdom) -->
+  <circle cx="25" cy="25" r="4" fill="#ffd700" opacity="0.7"/>
+  <circle cx="75" cy="25" r="4" fill="#ffd700" opacity="0.7"/>
+</svg>

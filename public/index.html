@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Revision Scheduler</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Revision Scheduler</h1>
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-value" id="total-cards">0</div>
+          <div class="stat-label">Total Topics</div>
+        </div>
+        <div class="stat-card highlight">
+          <div class="stat-value" id="due-cards">0</div>
+          <div class="stat-label">Due for Review</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="reviewed-today">0</div>
+          <div class="stat-label">Reviewed Today</div>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="add">Add New Topic</button>
+      <button class="tab" data-tab="review">Review Now</button>
+      <button class="tab" data-tab="all">All Topics</button>
+    </nav>
+
+    <!-- Add New Topic Tab -->
+    <section id="add-section" class="tab-content active">
+      <div class="card">
+        <h2>Add What You Learned</h2>
+        <form id="add-form">
+          <div class="form-group">
+            <label for="topic">Topic / Category</label>
+            <div class="dropdown-container">
+              <input type="text" id="topic" placeholder="Select or type a new category" required autocomplete="off">
+              <div class="dropdown-arrow">▼</div>
+              <div id="topic-dropdown" class="dropdown-menu" style="display: none;">
+                <div id="topic-options"></div>
+              </div>
+            </div>
+            <div id="selected-topic-preview" class="topic-preview" style="display: none;">
+              <span class="topic-preview-badge" id="preview-badge"></span>
+            </div>
+          </div>
+          <div class="form-group" id="color-picker-group" style="display: none;">
+            <label for="topic-color">Choose a color for this new category</label>
+            <div class="color-picker-container">
+              <input type="color" id="topic-color" value="#6366f1">
+              <div class="preset-colors">
+                <button type="button" class="color-preset" data-color="#6366f1" style="background: #6366f1;"></button>
+                <button type="button" class="color-preset" data-color="#ec4899" style="background: #ec4899;"></button>
+                <button type="button" class="color-preset" data-color="#8b5cf6" style="background: #8b5cf6;"></button>
+                <button type="button" class="color-preset" data-color="#f59e0b" style="background: #f59e0b;"></button>
+                <button type="button" class="color-preset" data-color="#10b981" style="background: #10b981;"></button>
+                <button type="button" class="color-preset" data-color="#3b82f6" style="background: #3b82f6;"></button>
+                <button type="button" class="color-preset" data-color="#ef4444" style="background: #ef4444;"></button>
+                <button type="button" class="color-preset" data-color="#06b6d4" style="background: #06b6d4;"></button>
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="title">Title / What You Learned</label>
+            <input type="text" id="title" placeholder="e.g., List Comprehensions, Quadratic Formula" required>
+          </div>
+          <div class="form-group">
+            <label for="content">Notes (Optional)</label>
+            <textarea id="content" rows="4" placeholder="Additional details or notes..."></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary">Add Topic</button>
+        </form>
+      </div>
+    </section>
+
+    <!-- Review Tab -->
+    <section id="review-section" class="tab-content">
+      <div id="review-container">
+        <div id="no-reviews" class="empty-state">
+          <h2>No reviews due!</h2>
+          <p>Check back later or add new topics to learn.</p>
+        </div>
+
+        <div id="review-card" class="card review-card" style="display: none;">
+          <div class="review-header">
+            <span class="review-count" id="review-count"></span>
+            <span class="date-added" id="date-added"></span>
+          </div>
+          <div class="topic-badge" id="review-topic-badge"></div>
+          <h2 id="review-title"></h2>
+          <div id="review-content" class="review-content"></div>
+
+          <div class="review-history" id="review-history-section" style="display: none;">
+            <h3>Review History</h3>
+            <div id="review-history"></div>
+          </div>
+
+          <div class="rating-buttons">
+            <button class="btn btn-again" data-rating="1">
+              <span class="rating-label">Again</span>
+              <span class="rating-desc">Forgot</span>
+            </button>
+            <button class="btn btn-hard" data-rating="2">
+              <span class="rating-label">Hard</span>
+              <span class="rating-desc">Difficult</span>
+            </button>
+            <button class="btn btn-good" data-rating="3">
+              <span class="rating-label">Good</span>
+              <span class="rating-desc">Normal</span>
+            </button>
+            <button class="btn btn-easy" data-rating="4">
+              <span class="rating-label">Easy</span>
+              <span class="rating-desc">Easy!</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- All Topics Tab -->
+    <section id="all-section" class="tab-content">
+      <div class="card">
+        <h2>All Topics</h2>
+        <div id="all-cards-container">
+          <div class="empty-state">
+            <p>No topics yet. Add your first topic to get started!</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
