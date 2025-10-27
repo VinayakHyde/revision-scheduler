@@ -250,6 +250,43 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
+// Update a card
+app.put('/api/cards/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, content } = req.body;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid card ID' });
+    }
+
+    if (!title || !title.trim()) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    const db = getDB();
+    const updateData = {
+      title: title.trim(),
+      content: content?.trim() || ''
+    };
+
+    const result = await db.collection('cards').updateOne(
+      { _id: new ObjectId(id) },
+      { $set: updateData }
+    );
+
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
+    const updatedCard = await db.collection('cards').findOne({ _id: new ObjectId(id) });
+    res.json(updatedCard);
+  } catch (error) {
+    console.error('Error updating card:', error);
+    res.status(500).json({ error: 'Failed to update card' });
+  }
+});
+
 // Delete a card
 app.delete('/api/cards/:id', async (req, res) => {
   try {

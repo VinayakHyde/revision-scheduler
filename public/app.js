@@ -20,6 +20,7 @@ const previewBadge = document.getElementById('preview-badge');
 document.addEventListener('DOMContentLoaded', () => {
   setupTabs();
   setupAddForm();
+  setupEditForm();
   setupReviewButtons();
   setupTopicInput();
   setupColorPresets();
@@ -280,7 +281,7 @@ function showReviewCard() {
 
   const contentEl = document.getElementById('review-content');
   if (card.content) {
-    contentEl.textContent = card.content;
+    contentEl.innerHTML = linkifyText(card.content);
     contentEl.style.display = 'block';
   } else {
     contentEl.style.display = 'none';
@@ -372,9 +373,17 @@ async function loadAllCards() {
             <div class="card-item ${isDue ? 'due' : ''}" style="border-left-color: ${card.topicColor || '#6366f1'};">
               <div class="card-item-header">
                 <h3>${escapeHtml(card.title)}</h3>
-                <button class="btn-delete" onclick="deleteCard('${card._id}')">Delete</button>
+                <div class="card-actions">
+                  <button class="btn-edit" onclick="editCard('${card._id}')" title="Edit topic">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                    </svg>
+                  </button>
+                  <button class="btn-delete" onclick="deleteCard('${card._id}')">Delete</button>
+                </div>
               </div>
-              ${card.content ? `<p class="card-item-content">${escapeHtml(card.content)}</p>` : ''}
+              ${card.content ? `<p class="card-item-content">${linkifyText(card.content)}</p>` : ''}
               <div class="card-item-meta">
                 <span>Added: ${formatDate(card.createdAt)}</span>
                 <span class="${isDue ? 'due-badge' : ''}">
@@ -404,6 +413,76 @@ async function loadAllCards() {
     console.error('Error loading all cards:', error);
     showToast('Failed to load cards', 'error');
   }
+}
+
+// Edit Card
+async function editCard(cardId) {
+  try {
+    // Fetch the card details
+    const response = await fetch(`/api/cards/all`);
+    const cards = await response.json();
+    const card = cards.find(c => c._id === cardId);
+
+    if (!card) {
+      showToast('Card not found', 'error');
+      return;
+    }
+
+    // Populate the edit form
+    document.getElementById('edit-card-id').value = card._id;
+    document.getElementById('edit-topic').value = card.topic;
+    document.getElementById('edit-title').value = card.title;
+    document.getElementById('edit-content').value = card.content || '';
+
+    // Show the modal
+    document.getElementById('edit-modal').style.display = 'flex';
+  } catch (error) {
+    console.error('Error loading card for edit:', error);
+    showToast('Failed to load card', 'error');
+  }
+}
+
+// Close Edit Modal
+function closeEditModal() {
+  document.getElementById('edit-modal').style.display = 'none';
+  document.getElementById('edit-form').reset();
+}
+
+// Setup Edit Form
+function setupEditForm() {
+  const editForm = document.getElementById('edit-form');
+  editForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const cardId = document.getElementById('edit-card-id').value;
+    const title = document.getElementById('edit-title').value;
+    const content = document.getElementById('edit-content').value;
+
+    try {
+      const response = await fetch(`/api/cards/${cardId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, content })
+      });
+
+      if (!response.ok) throw new Error('Failed to update card');
+
+      showToast('Topic updated successfully!');
+      closeEditModal();
+      loadAllCards();
+    } catch (error) {
+      console.error('Error updating card:', error);
+      showToast('Failed to update topic', 'error');
+    }
+  });
+
+  // Close modal when clicking outside
+  const modal = document.getElementById('edit-modal');
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      closeEditModal();
+    }
+  });
 }
 
 // Delete Card
@@ -460,6 +539,24 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// Convert URLs in text to clickable links
+function linkifyText(text) {
+  if (!text) return '';
+
+  // Escape HTML first
+  const escapedText = escapeHtml(text);
+
+  // URL regex pattern to match http(s) and common URLs
+  const urlPattern = /(\b(https?:\/\/|www\.)[^\s<]+[^\s<.,;!?)\]}'"])/gi;
+
+  // Replace URLs with anchor tags
+  return escapedText.replace(urlPattern, (url) => {
+    // Add https:// if URL starts with www.
+    const href = url.startsWith('www.') ? 'https://' + url : url;
+    return `<a href="${href}" target="_blank" rel="noopener noreferrer" class="content-link">${url}</a>`;
+  });
 }
 
 function showToast(message, type = 'success') {

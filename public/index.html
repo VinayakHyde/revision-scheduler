@@ -139,6 +139,35 @@
 
   <div id="toast" class="toast"></div>
 
+  <!-- Edit Modal -->
+  <div id="edit-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Edit Topic</h2>
+        <button class="modal-close" onclick="closeEditModal()">&times;</button>
+      </div>
+      <form id="edit-form">
+        <input type="hidden" id="edit-card-id">
+        <div class="form-group">
+          <label for="edit-topic">Topic / Category</label>
+          <input type="text" id="edit-topic" readonly>
+        </div>
+        <div class="form-group">
+          <label for="edit-title">Title / What You Learned</label>
+          <input type="text" id="edit-title" placeholder="e.g., List Comprehensions, Quadratic Formula" required>
+        </div>
+        <div class="form-group">
+          <label for="edit-content">Notes (Optional)</label>
+          <textarea id="edit-content" rows="4" placeholder="Additional details or notes..."></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeEditModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script src="app.js"></script>
 </body>
 </html>
