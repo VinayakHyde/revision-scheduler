@@ -227,6 +227,83 @@ app.post('/api/cards/:id/review', async (req, res) => {
   }
 });
 
+// Undo last review
+app.post('/api/cards/:id/undo', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid card ID' });
+    }
+
+    const db = getDB();
+    const card = await db.collection('cards').findOne({ _id: new ObjectId(id) });
+
+    if (!card) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
+    // Check if there's a review to undo
+    if (!card.reviewHistory || card.reviewHistory.length === 0) {
+      return res.status(400).json({ error: 'No reviews to undo' });
+    }
+
+    // Remove the last review from history
+    const reviewHistory = card.reviewHistory.slice(0, -1);
+
+    // Restore the previous FSRS state
+    // If there are no more reviews, reset to empty card
+    let previousFsrsCard;
+    let previousNextReview;
+
+    if (reviewHistory.length === 0) {
+      // No previous reviews, reset to initial state
+      const createdAt = card.createdAt || new Date();
+      previousFsrsCard = createEmptyCard(createdAt);
+      // Schedule for tomorrow (same as initial creation)
+      previousNextReview = new Date(createdAt.getTime() + 24 * 60 * 60 * 1000);
+    } else {
+      // Recalculate FSRS state by replaying all remaining reviews
+      const createdAt = card.createdAt || new Date();
+      let fsrsCard = createEmptyCard(createdAt);
+      let reviewDate = createdAt;
+
+      // Replay each review in order
+      for (const review of reviewHistory) {
+        const schedulingCard = f.next(fsrsCard, review.date, review.rating);
+        fsrsCard = schedulingCard.card;
+        reviewDate = review.date;
+      }
+
+      previousFsrsCard = fsrsCard;
+      previousNextReview = fsrsCard.due;
+    }
+
+    // Update the card
+    const updateResult = await db.collection('cards').updateOne(
+      { _id: new ObjectId(id) },
+      {
+        $set: {
+          fsrsCard: previousFsrsCard,
+          nextReview: previousNextReview,
+          reviewHistory: reviewHistory,
+          lastReviewed: reviewHistory.length > 0 ? reviewHistory[reviewHistory.length - 1].date : null
+        }
+      }
+    );
+
+    if (updateResult.matchedCount === 0) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
+    const updatedCard = await db.collection('cards').findOne({ _id: new ObjectId(id) });
+    res.json(updatedCard);
+  } catch (error) {
+    console.error('Error undoing review:', error);
+    res.status(500).json({ error: 'Failed to undo review' });
+  }
+});
+
 // Get statistics
 app.get('/api/stats', async (req, res) => {
   try {

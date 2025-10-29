@@ -2,6 +2,8 @@
 let currentReviewCards = [];
 let currentReviewIndex = 0;
 let availableTopics = [];
+let allCards = []; // Store all cards for search
+let reviewHistory = []; // Store all reviewed cards in current session for undo
 
 // DOM Elements
 const tabs = document.querySelectorAll('.tab');
@@ -24,6 +26,8 @@ document.addEventListener('DOMContentLoaded', () => {
   setupReviewButtons();
   setupTopicInput();
   setupColorPresets();
+  setupSearchInput();
+  setupUndoButton();
   loadTopics();
   loadStats();
   loadDueCards();
@@ -206,6 +210,37 @@ function setupColorPresets() {
   });
 }
 
+// Setup Search Input
+function setupSearchInput() {
+  const searchInput = document.getElementById('search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', (e) => {
+      const searchTerm = e.target.value.toLowerCase().trim();
+      filterCards(searchTerm);
+    });
+  }
+}
+
+// Filter cards based on search term
+function filterCards(searchTerm) {
+  if (!searchTerm) {
+    renderAllCards(allCards);
+    return;
+  }
+
+  const filteredCards = allCards.filter(card => {
+    const topic = card.topic.toLowerCase();
+    const title = card.title.toLowerCase();
+    const content = (card.content || '').toLowerCase();
+
+    return topic.includes(searchTerm) ||
+           title.includes(searchTerm) ||
+           content.includes(searchTerm);
+  });
+
+  renderAllCards(filteredCards);
+}
+
 // Load Topics
 async function loadTopics() {
   try {
@@ -236,6 +271,13 @@ async function loadDueCards() {
     const response = await fetch('/api/cards/due');
     currentReviewCards = await response.json();
     currentReviewIndex = 0;
+    reviewHistory = []; // Reset review history when loading new cards
+
+    // Hide undo button when loading new cards
+    const undoBtn = document.getElementById('undo-btn');
+    if (undoBtn) {
+      undoBtn.style.display = 'none';
+    }
 
     if (currentReviewCards.length === 0) {
       showNoReviews();
@@ -324,6 +366,20 @@ async function submitReview(rating) {
 
     if (!response.ok) throw new Error('Failed to submit review');
 
+    // Add this review to history
+    reviewHistory.push({
+      cardId: card._id,
+      index: currentReviewIndex,
+      card: { ...card },
+      rating: rating
+    });
+
+    // Show undo button
+    const undoBtn = document.getElementById('undo-btn');
+    if (undoBtn) {
+      undoBtn.style.display = 'flex';
+    }
+
     currentReviewIndex++;
     showReviewCard();
     loadStats();
@@ -333,86 +389,147 @@ async function submitReview(rating) {
   }
 }
 
+// Setup Undo Button
+function setupUndoButton() {
+  const undoBtn = document.getElementById('undo-btn');
+  if (undoBtn) {
+    undoBtn.addEventListener('click', async () => {
+      if (reviewHistory.length === 0) return;
+
+      // Get the last reviewed card
+      const lastReview = reviewHistory[reviewHistory.length - 1];
+
+      try {
+        const response = await fetch(`/api/cards/${lastReview.cardId}/undo`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) throw new Error('Failed to undo review');
+
+        showToast('Review undone successfully');
+
+        // Remove the last review from history
+        reviewHistory.pop();
+
+        // Go back to the previous card
+        currentReviewIndex = lastReview.index;
+
+        // Insert the card back into the current review session
+        const updatedCard = await response.json();
+        currentReviewCards[lastReview.index] = updatedCard;
+
+        // Show the card again
+        showReviewCard();
+
+        // Hide undo button if no more reviews to undo
+        if (reviewHistory.length === 0) {
+          undoBtn.style.display = 'none';
+        }
+
+        loadStats();
+      } catch (error) {
+        console.error('Error undoing review:', error);
+        showToast('Failed to undo review', 'error');
+      }
+    });
+  }
+}
+
 // Load All Cards
 async function loadAllCards() {
   try {
     const response = await fetch('/api/cards/all');
-    const cards = await response.json();
+    allCards = await response.json();
 
-    if (cards.length === 0) {
-      allCardsContainer.innerHTML = `
-        <div class="empty-state">
-          <p>No topics yet. Add your first topic to get started!</p>
-        </div>
-      `;
-      return;
+    // Clear search input when reloading
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+      searchInput.value = '';
     }
 
-    // Group cards by topic
-    const groupedCards = {};
-    cards.forEach(card => {
-      if (!groupedCards[card.topic]) {
-        groupedCards[card.topic] = [];
-      }
-      groupedCards[card.topic].push(card);
-    });
-
-    // Render grouped cards
-    allCardsContainer.innerHTML = Object.keys(groupedCards)
-      .sort()
-      .map(topic => {
-        const topicCards = groupedCards[topic];
-        const topicColor = topicCards[0].topicColor || '#6366f1';
-
-        const cardsHtml = topicCards.map(card => {
-          const nextReview = new Date(card.nextReview);
-          const now = new Date();
-          const isDue = nextReview <= now;
-
-          return `
-            <div class="card-item ${isDue ? 'due' : ''}" style="border-left-color: ${card.topicColor || '#6366f1'};">
-              <div class="card-item-header">
-                <h3>${escapeHtml(card.title)}</h3>
-                <div class="card-actions">
-                  <button class="btn-edit" onclick="editCard('${card._id}')" title="Edit topic">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                    </svg>
-                  </button>
-                  <button class="btn-delete" onclick="deleteCard('${card._id}')">Delete</button>
-                </div>
-              </div>
-              ${card.content ? `<p class="card-item-content">${linkifyText(card.content)}</p>` : ''}
-              <div class="card-item-meta">
-                <span>Added: ${formatDate(card.createdAt)}</span>
-                <span class="${isDue ? 'due-badge' : ''}">
-                  ${isDue ? 'Due now' : `Next review: ${formatDate(card.nextReview)}`}
-                </span>
-              </div>
-              ${card.reviewHistory && card.reviewHistory.length > 0 ? `
-                <div class="card-item-meta">
-                  <span>Reviews: ${card.reviewHistory.length}</span>
-                </div>
-              ` : ''}
-            </div>
-          `;
-        }).join('');
-
-        return `
-          <div class="topic-group">
-            <h2 class="topic-group-header" style="border-bottom-color: ${topicColor};">
-              <span class="topic-group-badge" style="background-color: ${topicColor};">${escapeHtml(topic)}</span>
-            </h2>
-            ${cardsHtml}
-          </div>
-        `;
-      })
-      .join('');
+    renderAllCards(allCards);
   } catch (error) {
     console.error('Error loading all cards:', error);
     showToast('Failed to load cards', 'error');
   }
+}
+
+// Render All Cards (used by both load and search)
+function renderAllCards(cards) {
+  if (cards.length === 0) {
+    const searchInput = document.getElementById('search-input');
+    const isSearching = searchInput && searchInput.value.trim() !== '';
+
+    allCardsContainer.innerHTML = `
+      <div class="empty-state">
+        <p>${isSearching ? 'No topics found matching your search.' : 'No topics yet. Add your first topic to get started!'}</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Group cards by topic
+  const groupedCards = {};
+  cards.forEach(card => {
+    if (!groupedCards[card.topic]) {
+      groupedCards[card.topic] = [];
+    }
+    groupedCards[card.topic].push(card);
+  });
+
+  // Render grouped cards
+  allCardsContainer.innerHTML = Object.keys(groupedCards)
+    .sort()
+    .map(topic => {
+      const topicCards = groupedCards[topic];
+      const topicColor = topicCards[0].topicColor || '#6366f1';
+
+      const cardsHtml = topicCards.map(card => {
+        const nextReview = new Date(card.nextReview);
+        const now = new Date();
+        const isDue = nextReview <= now;
+
+        return `
+          <div class="card-item ${isDue ? 'due' : ''}" style="border-left-color: ${card.topicColor || '#6366f1'};">
+            <div class="card-item-header">
+              <h3>${escapeHtml(card.title)}</h3>
+              <div class="card-actions">
+                <button class="btn-edit" onclick="editCard('${card._id}')" title="Edit topic">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </button>
+                <button class="btn-delete" onclick="deleteCard('${card._id}')">Delete</button>
+              </div>
+            </div>
+            ${card.content ? `<p class="card-item-content">${linkifyText(card.content)}</p>` : ''}
+            <div class="card-item-meta">
+              <span>Added: ${formatDate(card.createdAt)}</span>
+              <span class="${isDue ? 'due-badge' : ''}">
+                ${isDue ? 'Due now' : `Next review: ${formatDate(card.nextReview)}`}
+              </span>
+            </div>
+            ${card.reviewHistory && card.reviewHistory.length > 0 ? `
+              <div class="card-item-meta">
+                <span>Reviews: ${card.reviewHistory.length}</span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="topic-group">
+          <h2 class="topic-group-header" style="border-bottom-color: ${topicColor};">
+            <span class="topic-group-badge" style="background-color: ${topicColor};">${escapeHtml(topic)}</span>
+          </h2>
+          ${cardsHtml}
+        </div>
+      `;
+    })
+    .join('');
 }
 
 // Edit Card

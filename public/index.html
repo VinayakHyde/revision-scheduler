@@ -120,6 +120,13 @@
               <span class="rating-desc">Easy!</span>
             </button>
           </div>
+          <button id="undo-btn" class="btn btn-undo" style="display: none;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 7v6h6"></path>
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"></path>
+            </svg>
+            Undo Last Review
+          </button>
         </div>
       </div>
     </section>
@@ -128,6 +135,13 @@
     <section id="all-section" class="tab-content">
       <div class="card">
         <h2>All Topics</h2>
+        <div class="search-container">
+          <input type="text" id="search-input" placeholder="Search topics, titles, or notes..." class="search-input">
+          <svg class="search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+        </div>
         <div id="all-cards-container">
           <div class="empty-state">
             <p>No topics yet. Add your first topic to get started!</p>
