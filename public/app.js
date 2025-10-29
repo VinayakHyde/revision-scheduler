@@ -24,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupAddForm();
   setupEditForm();
   setupReviewButtons();
+  setupSkipButton();
   setupTopicInput();
   setupColorPresets();
   setupSearchInput();
@@ -100,6 +101,16 @@ function setupReviewButtons() {
       submitReview(rating);
     });
   });
+}
+
+// Skip Button
+function setupSkipButton() {
+  const skipBtn = document.getElementById('skip-btn');
+  if (skipBtn) {
+    skipBtn.addEventListener('click', () => {
+      skipCard();
+    });
+  }
 }
 
 // Setup Topic Input
@@ -387,6 +398,23 @@ async function submitReview(rating) {
     console.error('Error submitting review:', error);
     showToast('Failed to submit review', 'error');
   }
+}
+
+// Skip Card
+function skipCard() {
+  if (currentReviewIndex >= currentReviewCards.length) {
+    return;
+  }
+
+  const card = currentReviewCards[currentReviewIndex];
+
+  // Move the current card to the end of the queue
+  currentReviewCards.push(card);
+
+  // Show next card (don't increment index since we removed current card from its position)
+  // But we do need to track that we've moved through one card
+  showToast('Card skipped - will show again later');
+  showReviewCard();
 }
 
 // Setup Undo Button
