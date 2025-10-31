@@ -311,7 +311,7 @@ function showNoReviews() {
 function showReviewCard() {
   if (currentReviewIndex >= currentReviewCards.length) {
     showToast('All reviews completed!');
-    loadDueCards();
+    showNoReviews();
     loadStats();
     return;
   }
@@ -408,11 +408,11 @@ function skipCard() {
 
   const card = currentReviewCards[currentReviewIndex];
 
-  // Move the current card to the end of the queue
+  // Remove the current card from its position and add it to the end
+  currentReviewCards.splice(currentReviewIndex, 1);
   currentReviewCards.push(card);
 
-  // Show next card (don't increment index since we removed current card from its position)
-  // But we do need to track that we've moved through one card
+  // Don't increment index - the next card is now at the current index
   showToast('Card skipped - will show again later');
   showReviewCard();
 }
