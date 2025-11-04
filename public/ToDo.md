@@ -3,6 +3,10 @@
 - Drastically improve topic creation flow
 - Have last selected dropdown option selected by default
 - Drastically improve overall UI
+- Add statistics section
+- Gamify topic wise
 - Add OAuth
 - Add payment
 - Deploy on cloud
+- Release on app store or PWA
+- Add notifications functionality
