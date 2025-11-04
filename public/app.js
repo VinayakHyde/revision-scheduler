@@ -20,6 +20,7 @@ const previewBadge = document.getElementById('preview-badge');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+  setupThemeToggle();
   setupTabs();
   setupAddForm();
   setupEditForm();
@@ -33,6 +34,25 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStats();
   loadDueCards();
 });
+
+// Theme Toggle
+function setupThemeToggle() {
+  const themeToggle = document.getElementById('theme-toggle');
+  const html = document.documentElement;
+
+  // Load saved theme preference or default to light
+  const savedTheme = localStorage.getItem('theme') || 'light';
+  if (savedTheme === 'dark') {
+    html.classList.add('dark-mode');
+  }
+
+  // Toggle theme on button click
+  themeToggle.addEventListener('click', () => {
+    html.classList.toggle('dark-mode');
+    const isDark = html.classList.contains('dark-mode');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+  });
+}
 
 // Tab Navigation
 function setupTabs() {
@@ -411,8 +431,9 @@ function skipCard() {
   // Move the current card to the end of the queue
   currentReviewCards.push(card);
 
-  // Show next card (don't increment index since we removed current card from its position)
-  // But we do need to track that we've moved through one card
+  // Increment index to move to the next card
+  currentReviewIndex++;
+
   showToast('Card skipped - will show again later');
   showReviewCard();
 }
