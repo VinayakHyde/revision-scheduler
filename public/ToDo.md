@@ -10,3 +10,4 @@
 - Deploy on cloud
 - Release on app store or PWA
 - Add notifications functionality
+- Global rankings
