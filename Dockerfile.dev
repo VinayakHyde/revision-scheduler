@@ -1,0 +1,17 @@
+# Development Dockerfile with hot-reload
+FROM node:20-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install ALL dependencies (including dev dependencies)
+RUN npm install
+
+# Expose the application port
+EXPOSE 3000
+
+# Start the application with watch mode
+CMD ["npm", "run", "dev"]
