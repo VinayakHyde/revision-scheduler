@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupColorPresets();
   setupSearchInput();
   setupUndoButton();
+  setupUpcomingToggle();
   loadTopics();
   loadStats();
   loadDueCards();
@@ -382,6 +383,56 @@ function showReviewCard() {
   } else {
     document.getElementById('review-history-section').style.display = 'none';
   }
+
+  // Update upcoming topics list
+  updateUpcomingTopics();
+}
+
+// Update Upcoming Topics List
+function updateUpcomingTopics() {
+  const upcomingContainer = document.getElementById('upcoming-topics-container');
+  const upcomingCount = document.getElementById('upcoming-count');
+  const upcomingList = document.getElementById('upcoming-topics-list');
+
+  // Get remaining cards (excluding current one)
+  const remainingCards = currentReviewCards.slice(currentReviewIndex + 1);
+
+  if (remainingCards.length === 0) {
+    upcomingContainer.style.display = 'none';
+    return;
+  }
+
+  upcomingContainer.style.display = 'block';
+  upcomingCount.textContent = `${remainingCards.length} more topic${remainingCards.length === 1 ? '' : 's'} to review`;
+
+  // Populate the list
+  upcomingList.innerHTML = remainingCards.map(card => `
+    <div class="upcoming-item" style="border-left-color: ${card.topicColor || '#6366f1'};">
+      <div class="upcoming-item-header">
+        <span class="upcoming-item-badge" style="background-color: ${card.topicColor || '#6366f1'};">${escapeHtml(card.topic)}</span>
+        <span class="upcoming-item-title">${escapeHtml(card.title)}</span>
+      </div>
+      <div class="upcoming-item-meta">Added ${formatDate(card.createdAt)}</div>
+      ${card.content ? `<div class="upcoming-item-notes" style="display: none;">${linkifyText(card.content)}</div>` : ''}
+    </div>
+  `).join('');
+
+  // Add click handlers to toggle notes
+  upcomingList.querySelectorAll('.upcoming-item').forEach(item => {
+    const notesEl = item.querySelector('.upcoming-item-notes');
+    if (notesEl) {
+      item.addEventListener('click', (e) => {
+        // Don't toggle if clicking on a link or selecting text
+        if (e.target.tagName === 'A' || window.getSelection().toString().length > 0) {
+          return;
+        }
+
+        const isExpanded = notesEl.style.display === 'block';
+        notesEl.style.display = isExpanded ? 'none' : 'block';
+        item.classList.toggle('expanded', !isExpanded);
+      });
+    }
+  });
 }
 
 // Submit Review
@@ -480,6 +531,26 @@ function setupUndoButton() {
       } catch (error) {
         console.error('Error undoing review:', error);
         showToast('Failed to undo review', 'error');
+      }
+    });
+  }
+}
+
+// Setup Upcoming Topics Toggle
+function setupUpcomingToggle() {
+  const toggleBtn = document.getElementById('toggle-upcoming');
+  const upcomingList = document.getElementById('upcoming-topics-list');
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      const isExpanded = upcomingList.style.display === 'block';
+
+      if (isExpanded) {
+        upcomingList.style.display = 'none';
+        toggleBtn.classList.remove('expanded');
+      } else {
+        upcomingList.style.display = 'block';
+        toggleBtn.classList.add('expanded');
       }
     });
   }
