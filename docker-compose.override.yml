@@ -1,0 +1,16 @@
+# Development overrides for docker-compose
+# This file is automatically merged with docker-compose.yml in development
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    environment:
+      - NODE_ENV=development
+    volumes:
+      # Mount source code for live reloading
+      - .:/app
+      # Prevent node_modules from being overwritten
+      - /app/node_modules
+    # Override restart policy for faster development cycles
+    restart: "no"

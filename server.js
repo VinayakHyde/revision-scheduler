@@ -5,6 +5,7 @@ import { ObjectId } from 'mongodb';
 
 const app = express();
 const port = 3000;
+console.log('🔥 Hot-reload test - server restarted!');
 
 // Initialize FSRS with default parameters
 const f = fsrs(generatorParameters());
