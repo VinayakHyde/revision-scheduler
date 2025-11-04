@@ -1,0 +1,8 @@
+- Edit option in review and listing views
+- Fix dark mode
+- Drastically improve topic creation flow
+- Have last selected dropdown option selected by default
+- Drastically improve overall UI
+- Add OAuth
+- Add payment
+- Deploy on cloud
