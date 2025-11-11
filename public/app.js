@@ -26,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEditForm();
   setupReviewButtons();
   setupSkipButton();
+  setupEditReviewButton();
   setupTopicInput();
   setupColorPresets();
   setupSearchInput();
@@ -130,6 +131,19 @@ function setupSkipButton() {
   if (skipBtn) {
     skipBtn.addEventListener('click', () => {
       skipCard();
+    });
+  }
+}
+
+// Edit Review Button
+function setupEditReviewButton() {
+  const editReviewBtn = document.getElementById('edit-review-btn');
+  if (editReviewBtn) {
+    editReviewBtn.addEventListener('click', () => {
+      const card = currentReviewCards[currentReviewIndex];
+      if (card) {
+        editCard(card._id);
+      }
     });
   }
 }
@@ -407,10 +421,16 @@ function updateUpcomingTopics() {
 
   // Populate the list
   upcomingList.innerHTML = remainingCards.map(card => `
-    <div class="upcoming-item" style="border-left-color: ${card.topicColor || '#6366f1'};">
+    <div class="upcoming-item" data-card-id="${card._id}" style="border-left-color: ${card.topicColor || '#6366f1'};">
       <div class="upcoming-item-header">
         <span class="upcoming-item-badge" style="background-color: ${card.topicColor || '#6366f1'};">${escapeHtml(card.topic)}</span>
         <span class="upcoming-item-title">${escapeHtml(card.title)}</span>
+        <button class="btn-edit-upcoming" data-card-id="${card._id}" title="Edit">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </button>
       </div>
       <div class="upcoming-item-meta">Added ${formatDate(card.createdAt)}</div>
       ${card.content ? `<div class="upcoming-item-notes" style="display: none;">${linkifyText(card.content)}</div>` : ''}
@@ -422,8 +442,10 @@ function updateUpcomingTopics() {
     const notesEl = item.querySelector('.upcoming-item-notes');
     if (notesEl) {
       item.addEventListener('click', (e) => {
-        // Don't toggle if clicking on a link or selecting text
-        if (e.target.tagName === 'A' || window.getSelection().toString().length > 0) {
+        // Don't toggle if clicking on a link, edit button, or selecting text
+        if (e.target.tagName === 'A' ||
+            e.target.closest('.btn-edit-upcoming') ||
+            window.getSelection().toString().length > 0) {
           return;
         }
 
@@ -432,6 +454,15 @@ function updateUpcomingTopics() {
         item.classList.toggle('expanded', !isExpanded);
       });
     }
+  });
+
+  // Add edit button handlers
+  upcomingList.querySelectorAll('.btn-edit-upcoming').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cardId = btn.dataset.cardId;
+      editCard(cardId);
+    });
   });
 }
 
@@ -707,6 +738,15 @@ function setupEditForm() {
       showToast('Topic updated successfully!');
       closeEditModal();
       loadAllCards();
+
+      // Refresh the review card if we're viewing it
+      if (reviewCard.style.display !== 'none' && currentReviewCards[currentReviewIndex]) {
+        const currentCard = currentReviewCards[currentReviewIndex];
+        if (currentCard._id === cardId) {
+          // Reload the cards and update the current review
+          await loadDueCards();
+        }
+      }
     } catch (error) {
       console.error('Error updating card:', error);
       showToast('Failed to update topic', 'error');

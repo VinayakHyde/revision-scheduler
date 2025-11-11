@@ -1,6 +1,6 @@
 - Edit option in review and listing views
 - Fix dark mode
-- Drastically improve topic creation flow
+- Drastically improve topic creation flow (color picker thing is horrible ux)
 - Have last selected dropdown option selected by default
 - Drastically improve overall UI
 - Add statistics section
