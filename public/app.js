@@ -27,6 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   setupReviewButtons();
   setupSkipButton();
   setupEditReviewButton();
+  setupDeleteReviewButton();
   setupTopicInput();
   setupColorPresets();
   setupSearchInput();
@@ -143,6 +144,19 @@ function setupEditReviewButton() {
       const card = currentReviewCards[currentReviewIndex];
       if (card) {
         editCard(card._id);
+      }
+    });
+  }
+}
+
+// Delete Review Button
+function setupDeleteReviewButton() {
+  const deleteReviewBtn = document.getElementById('delete-review-btn');
+  if (deleteReviewBtn) {
+    deleteReviewBtn.addEventListener('click', () => {
+      const card = currentReviewCards[currentReviewIndex];
+      if (card) {
+        deleteCard(card._id);
       }
     });
   }
@@ -425,12 +439,19 @@ function updateUpcomingTopics() {
       <div class="upcoming-item-header">
         <span class="upcoming-item-badge" style="background-color: ${card.topicColor || '#6366f1'};">${escapeHtml(card.topic)}</span>
         <span class="upcoming-item-title">${escapeHtml(card.title)}</span>
-        <button class="btn-edit-upcoming" data-card-id="${card._id}" title="Edit">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
-        </button>
+        <div class="upcoming-item-actions">
+          <button class="btn-edit-upcoming" data-card-id="${card._id}" title="Edit">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+          </button>
+          <button class="btn-delete-upcoming" data-card-id="${card._id}" title="Delete">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6"></path>
+            </svg>
+          </button>
+        </div>
       </div>
       <div class="upcoming-item-meta">Added ${formatDate(card.createdAt)}</div>
       ${card.content ? `<div class="upcoming-item-notes" style="display: none;">${linkifyText(card.content)}</div>` : ''}
@@ -442,9 +463,9 @@ function updateUpcomingTopics() {
     const notesEl = item.querySelector('.upcoming-item-notes');
     if (notesEl) {
       item.addEventListener('click', (e) => {
-        // Don't toggle if clicking on a link, edit button, or selecting text
+        // Don't toggle if clicking on a link, action buttons, or selecting text
         if (e.target.tagName === 'A' ||
-            e.target.closest('.btn-edit-upcoming') ||
+            e.target.closest('.upcoming-item-actions') ||
             window.getSelection().toString().length > 0) {
           return;
         }
@@ -462,6 +483,15 @@ function updateUpcomingTopics() {
       e.stopPropagation();
       const cardId = btn.dataset.cardId;
       editCard(cardId);
+    });
+  });
+
+  // Add delete button handlers
+  upcomingList.querySelectorAll('.btn-delete-upcoming').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const cardId = btn.dataset.cardId;
+      deleteCard(cardId);
     });
   });
 }
@@ -778,6 +808,29 @@ async function deleteCard(cardId) {
     showToast('Topic deleted successfully');
     loadAllCards();
     loadStats();
+
+    // If we're in review mode and deleted the current card, reload reviews
+    if (reviewCard.style.display !== 'none' && currentReviewCards[currentReviewIndex]) {
+      const currentCard = currentReviewCards[currentReviewIndex];
+      if (currentCard._id === cardId) {
+        // Remove the deleted card from the current review queue
+        currentReviewCards.splice(currentReviewIndex, 1);
+
+        // Show next card or no reviews message
+        if (currentReviewCards.length === 0) {
+          showNoReviews();
+        } else {
+          // Adjust index if we're at the end
+          if (currentReviewIndex >= currentReviewCards.length) {
+            currentReviewIndex = currentReviewCards.length - 1;
+          }
+          showReviewCard();
+        }
+      } else {
+        // Deleted an upcoming card, just refresh the upcoming list
+        updateUpcomingTopics();
+      }
+    }
   } catch (error) {
     console.error('Error deleting card:', error);
     showToast('Failed to delete topic', 'error');

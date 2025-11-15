@@ -433,6 +433,10 @@ input[type="color"] {
   background: var(--bg);
 }
 
+.btn-delete-review:hover {
+  color: #ef4444;
+}
+
 .topic-badge {
   display: inline-block;
   padding: 0.375rem 0.75rem;
@@ -999,7 +1003,21 @@ input[type="color"] {
   flex: 1;
 }
 
-.btn-edit-upcoming {
+.upcoming-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.upcoming-item:hover .upcoming-item-actions {
+  opacity: 1;
+}
+
+.btn-edit-upcoming,
+.btn-delete-upcoming {
   background: none;
   border: none;
   padding: 0.25rem;
@@ -1010,16 +1028,15 @@ input[type="color"] {
   align-items: center;
   justify-content: center;
   border-radius: 0.25rem;
-  flex-shrink: 0;
-  opacity: 0;
-}
-
-.upcoming-item:hover .btn-edit-upcoming {
-  opacity: 1;
 }
 
 .btn-edit-upcoming:hover {
   color: var(--primary);
+  background: var(--card-bg);
+}
+
+.btn-delete-upcoming:hover {
+  color: #ef4444;
   background: var(--card-bg);
 }
 
