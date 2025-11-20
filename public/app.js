@@ -4,6 +4,8 @@ let currentReviewIndex = 0;
 let availableTopics = [];
 let allCards = []; // Store all cards for search
 let reviewHistory = []; // Store all reviewed cards in current session for undo
+let savedTitles = []; // Store all unique titles for autocomplete
+let selectedAutocompleteIndex = -1; // Track selected suggestion
 
 // DOM Elements
 const tabs = document.querySelectorAll('.tab');
@@ -17,6 +19,9 @@ const topicColorInput = document.getElementById('topic-color');
 const colorPickerGroup = document.getElementById('color-picker-group');
 const topicPreview = document.getElementById('selected-topic-preview');
 const previewBadge = document.getElementById('preview-badge');
+const titleInput = document.getElementById('title');
+const titleAutocomplete = document.getElementById('title-autocomplete');
+const titleSuggestions = document.getElementById('title-suggestions');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
@@ -29,11 +34,13 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEditReviewButton();
   setupDeleteReviewButton();
   setupTopicInput();
+  setupTitleAutocomplete();
   setupColorPresets();
   setupSearchInput();
   setupUndoButton();
   setupUpcomingToggle();
   loadTopics();
+  loadTitles();
   loadStats();
   loadDueCards();
 });
@@ -106,7 +113,9 @@ function setupAddForm() {
       addForm.reset();
       colorPickerGroup.style.display = 'none';
       topicPreview.style.display = 'none';
+      titleAutocomplete.style.display = 'none';
       loadTopics(); // Reload topics to include new one
+      loadTitles(); // Reload titles to include new one
       loadStats();
     } catch (error) {
       console.error('Error adding card:', error);
@@ -159,6 +168,138 @@ function setupDeleteReviewButton() {
         deleteCard(card._id);
       }
     });
+  }
+}
+
+// Setup Title Autocomplete
+function setupTitleAutocomplete() {
+  // Show autocomplete on focus
+  titleInput.addEventListener('focus', () => {
+    if (titleInput.value.trim()) {
+      renderTitleSuggestions(titleInput.value.trim());
+    }
+  });
+
+  // Filter suggestions on input
+  titleInput.addEventListener('input', () => {
+    const inputValue = titleInput.value.trim();
+
+    if (inputValue) {
+      renderTitleSuggestions(inputValue);
+      titleAutocomplete.style.display = 'block';
+    } else {
+      titleAutocomplete.style.display = 'none';
+    }
+    selectedAutocompleteIndex = -1;
+  });
+
+  // Handle keyboard navigation
+  titleInput.addEventListener('keydown', (e) => {
+    if (titleAutocomplete.style.display === 'none') return;
+
+    const items = titleSuggestions.querySelectorAll('.autocomplete-item');
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      selectedAutocompleteIndex = Math.min(selectedAutocompleteIndex + 1, items.length - 1);
+      updateAutocompleteSelection(items);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      selectedAutocompleteIndex = Math.max(selectedAutocompleteIndex - 1, -1);
+      updateAutocompleteSelection(items);
+    } else if (e.key === 'Enter' && selectedAutocompleteIndex >= 0) {
+      e.preventDefault();
+      items[selectedAutocompleteIndex].click();
+    } else if (e.key === 'Escape') {
+      titleAutocomplete.style.display = 'none';
+      selectedAutocompleteIndex = -1;
+    }
+  });
+
+  // Close autocomplete when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.autocomplete-container')) {
+      titleAutocomplete.style.display = 'none';
+      selectedAutocompleteIndex = -1;
+    }
+  });
+}
+
+// Update autocomplete selection highlighting
+function updateAutocompleteSelection(items) {
+  items.forEach((item, index) => {
+    if (index === selectedAutocompleteIndex) {
+      item.classList.add('selected');
+      item.scrollIntoView({ block: 'nearest' });
+    } else {
+      item.classList.remove('selected');
+    }
+  });
+}
+
+// Render title suggestions
+function renderTitleSuggestions(filter) {
+  const filterLower = filter.toLowerCase();
+
+  // Find matching titles
+  const matchingTitles = savedTitles.filter(title =>
+    title.toLowerCase().includes(filterLower) && title.toLowerCase() !== filterLower
+  );
+
+  if (matchingTitles.length === 0) {
+    titleAutocomplete.style.display = 'none';
+    return;
+  }
+
+  // Sort by relevance (starts with > contains)
+  const sortedTitles = matchingTitles.sort((a, b) => {
+    const aStarts = a.toLowerCase().startsWith(filterLower);
+    const bStarts = b.toLowerCase().startsWith(filterLower);
+
+    if (aStarts && !bStarts) return -1;
+    if (!aStarts && bStarts) return 1;
+    return a.localeCompare(b);
+  });
+
+  // Limit to top 10 suggestions
+  const topSuggestions = sortedTitles.slice(0, 10);
+
+  titleSuggestions.innerHTML = topSuggestions.map((title, index) => `
+    <div class="autocomplete-item" data-title="${escapeHtml(title)}" data-index="${index}">
+      <span class="autocomplete-item-text">${escapeHtml(title)}</span>
+    </div>
+  `).join('');
+
+  // Add click handlers
+  titleSuggestions.querySelectorAll('.autocomplete-item').forEach(item => {
+    item.addEventListener('click', () => {
+      titleInput.value = item.dataset.title;
+      titleAutocomplete.style.display = 'none';
+      selectedAutocompleteIndex = -1;
+      titleInput.focus();
+    });
+  });
+
+  titleAutocomplete.style.display = 'block';
+}
+
+// Load all unique titles from cards
+async function loadTitles() {
+  try {
+    const response = await fetch('/api/cards/all');
+    const cards = await response.json();
+
+    // Extract unique titles
+    const titlesSet = new Set();
+    cards.forEach(card => {
+      if (card.title && card.title.trim()) {
+        titlesSet.add(card.title.trim());
+      }
+    });
+
+    savedTitles = Array.from(titlesSet);
+  } catch (error) {
+    console.error('Error loading titles:', error);
   }
 }
 
@@ -618,18 +759,27 @@ function setupUpcomingToggle() {
 }
 
 // Load All Cards
-async function loadAllCards() {
+async function loadAllCards(preserveSearch = false) {
   try {
     const response = await fetch('/api/cards/all');
     allCards = await response.json();
 
-    // Clear search input when reloading
     const searchInput = document.getElementById('search-input');
-    if (searchInput) {
-      searchInput.value = '';
+
+    if (preserveSearch && searchInput && searchInput.value.trim()) {
+      // Preserve the search and re-apply the filter
+      const searchTerm = searchInput.value.toLowerCase().trim();
+      filterCards(searchTerm);
+    } else {
+      // Clear search input when reloading
+      if (searchInput) {
+        searchInput.value = '';
+      }
+      renderAllCards(allCards);
     }
 
-    renderAllCards(allCards);
+    // Update saved titles for autocomplete
+    loadTitles();
   } catch (error) {
     console.error('Error loading all cards:', error);
     showToast('Failed to load cards', 'error');
@@ -767,7 +917,9 @@ function setupEditForm() {
 
       showToast('Topic updated successfully!');
       closeEditModal();
-      loadAllCards();
+
+      // Preserve search when reloading cards
+      loadAllCards(true);
 
       // Refresh the review card if we're viewing it
       if (reviewCard.style.display !== 'none' && currentReviewCards[currentReviewIndex]) {
@@ -785,10 +937,19 @@ function setupEditForm() {
 
   // Close modal when clicking outside
   const modal = document.getElementById('edit-modal');
+  let mouseDownTarget = null;
+
+  // Track where the mouse was pressed down
+  modal.addEventListener('mousedown', (e) => {
+    mouseDownTarget = e.target;
+  });
+
+  // Only close if both mousedown and mouseup happened on the backdrop
   modal.addEventListener('click', (e) => {
-    if (e.target === modal) {
+    if (e.target === modal && mouseDownTarget === modal) {
       closeEditModal();
     }
+    mouseDownTarget = null;
   });
 }
 
@@ -806,7 +967,8 @@ async function deleteCard(cardId) {
     if (!response.ok) throw new Error('Failed to delete card');
 
     showToast('Topic deleted successfully');
-    loadAllCards();
+    // Preserve search when reloading cards after deletion
+    loadAllCards(true);
     loadStats();
 
     // If we're in review mode and deleted the current card, reload reviews
