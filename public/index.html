@@ -11,18 +11,8 @@
   <div class="container">
     <header>
       <h1>Revision Scheduler</h1>
-      <button id="theme-toggle" class="theme-toggle" aria-label="Toggle theme">
-        <svg class="theme-icon sun" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="4" fill="#f59e0b" stroke="#f59e0b" stroke-width="2"/>
-          <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
-          <path d="M12 5a7 7 0 1 0 0 14" fill="#fef3c7" opacity="0.5"/>
-        </svg>
-        <svg class="theme-icon moon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#818cf8" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="17" cy="9" r="1" fill="#e0e7ff"/>
-          <circle cx="14" cy="7" r="0.5" fill="#e0e7ff"/>
-          <circle cx="18" cy="12" r="0.5" fill="#e0e7ff"/>
-        </svg>
+      <button id="settings-toggle" class="settings-toggle" aria-label="Settings">
+        <img src="assets/settings.svg" alt="Settings" class="settings-icon">
       </button>
       <div class="stats">
         <div class="stat-card">
@@ -204,6 +194,66 @@
   </div>
 
   <div id="toast" class="toast"></div>
+
+  <!-- Settings Modal -->
+  <div id="settings-modal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Settings</h2>
+        <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+      </div>
+      <div class="settings-content">
+        <!-- Theme Section -->
+        <div class="settings-section">
+          <h3>Appearance</h3>
+          <div class="settings-item">
+            <label for="theme-select">Theme</label>
+            <button id="theme-toggle" class="theme-toggle-button">
+              <svg class="theme-icon sun" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="12" cy="12" r="4" fill="#f59e0b" stroke="#f59e0b" stroke-width="2"/>
+                <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+                <path d="M12 5a7 7 0 1 0 0 14" fill="#fef3c7" opacity="0.5"/>
+              </svg>
+              <svg class="theme-icon moon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#818cf8" stroke="#6366f1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="17" cy="9" r="1" fill="#e0e7ff"/>
+                <circle cx="14" cy="7" r="0.5" fill="#e0e7ff"/>
+                <circle cx="18" cy="12" r="0.5" fill="#e0e7ff"/>
+              </svg>
+              <span id="theme-label">Light</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- FSRS Algorithm Section -->
+        <div class="settings-section">
+          <h3>Spaced Repetition Algorithm (FSRS)</h3>
+          <div class="settings-item">
+            <label for="retention-rate">
+              Desired Retention Rate: <span id="retention-value">90%</span>
+            </label>
+            <input type="range" id="retention-rate" min="70" max="97" value="90" step="1">
+            <p class="settings-description">Higher retention means more frequent reviews. Lower retention means fewer reviews but more forgetting.</p>
+          </div>
+        </div>
+
+        <div class="settings-section">
+          <h3>Advanced</h3>
+          <div class="settings-item">
+            <button type="button" class="btn btn-warning" onclick="recalculateAllCards()">
+              Recalculate All Cards
+            </button>
+            <p class="settings-description">Apply the current retention settings to all existing cards. This will reschedule all cards based on their review history and the new algorithm parameters.</p>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeSettingsModal()">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- Edit Modal -->
   <div id="edit-modal" class="modal" style="display: none;">

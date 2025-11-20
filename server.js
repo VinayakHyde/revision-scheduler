@@ -6,8 +6,20 @@ import { ObjectId } from 'mongodb';
 const app = express();
 const port = 3000;
 
+// Default FSRS settings
+let fsrsSettings = {
+  requestRetention: 0.9
+};
+
 // Initialize FSRS with default parameters
-const f = fsrs(generatorParameters());
+function getFsrsInstance() {
+  const params = generatorParameters({
+    request_retention: fsrsSettings.requestRetention
+  });
+  return fsrs(params);
+}
+
+let f = getFsrsInstance();
 
 // Middleware
 app.use(express.json());
@@ -386,6 +398,124 @@ app.delete('/api/cards/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete card' });
   }
 });
+
+// Get settings
+app.get('/api/settings', async (req, res) => {
+  try {
+    const db = getDB();
+    let settings = await db.collection('settings').findOne({ _id: 'fsrs' });
+
+    if (!settings) {
+      // Return default settings if none exist
+      settings = fsrsSettings;
+    }
+
+    res.json(settings);
+  } catch (error) {
+    console.error('Error fetching settings:', error);
+    res.status(500).json({ error: 'Failed to fetch settings' });
+  }
+});
+
+// Save settings
+app.post('/api/settings', async (req, res) => {
+  try {
+    const { requestRetention } = req.body;
+
+    // Validate settings
+    if (requestRetention < 0.7 || requestRetention > 0.97) {
+      return res.status(400).json({ error: 'Request retention must be between 0.7 and 0.97' });
+    }
+
+    // Update settings
+    fsrsSettings = { requestRetention };
+
+    // Reinitialize FSRS with new settings
+    f = getFsrsInstance();
+
+    // Save to database
+    const db = getDB();
+    await db.collection('settings').updateOne(
+      { _id: 'fsrs' },
+      { $set: fsrsSettings },
+      { upsert: true }
+    );
+
+    res.json({ message: 'Settings saved successfully', settings: fsrsSettings });
+  } catch (error) {
+    console.error('Error saving settings:', error);
+    res.status(500).json({ error: 'Failed to save settings' });
+  }
+});
+
+// Recalculate all cards with current FSRS settings
+app.post('/api/cards/recalculate', async (req, res) => {
+  try {
+    const db = getDB();
+    const cards = await db.collection('cards').find().toArray();
+
+    let updatedCount = 0;
+
+    for (const card of cards) {
+      // Skip cards with no review history
+      if (!card.reviewHistory || card.reviewHistory.length === 0) {
+        continue;
+      }
+
+      // Replay all reviews with current FSRS settings
+      const createdAt = card.createdAt || new Date();
+      let fsrsCard = createEmptyCard(createdAt);
+
+      for (const review of card.reviewHistory) {
+        const schedulingCard = f.next(fsrsCard, review.date, review.rating);
+        fsrsCard = schedulingCard.card;
+      }
+
+      // Update the card with recalculated FSRS state
+      await db.collection('cards').updateOne(
+        { _id: card._id },
+        {
+          $set: {
+            fsrsCard: fsrsCard,
+            nextReview: fsrsCard.due
+          }
+        }
+      );
+
+      updatedCount++;
+    }
+
+    res.json({
+      message: 'Cards recalculated successfully',
+      updated: updatedCount,
+      total: cards.length
+    });
+  } catch (error) {
+    console.error('Error recalculating cards:', error);
+    res.status(500).json({ error: 'Failed to recalculate cards' });
+  }
+});
+
+// Load settings from database on startup
+async function loadSettings() {
+  try {
+    const db = getDB();
+    const settings = await db.collection('settings').findOne({ _id: 'fsrs' });
+
+    if (settings) {
+      fsrsSettings = {
+        requestRetention: settings.requestRetention
+      };
+      f = getFsrsInstance();
+      console.log('Loaded FSRS settings:', fsrsSettings);
+    }
+  } catch (error) {
+    console.error('Error loading settings:', error);
+  }
+}
+
+// Load settings on startup
+await loadSettings();
 
 app.listen(port, () => {
   console.log(`Revision Scheduler running at http://localhost:${port}`);

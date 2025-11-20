@@ -6,6 +6,9 @@ let allCards = []; // Store all cards for search
 let reviewHistory = []; // Store all reviewed cards in current session for undo
 let savedTitles = []; // Store all unique titles for autocomplete
 let selectedAutocompleteIndex = -1; // Track selected suggestion
+let fsrsSettings = {
+  requestRetention: 0.9
+}; // FSRS algorithm settings
 
 // DOM Elements
 const tabs = document.querySelectorAll('.tab');
@@ -25,7 +28,9 @@ const titleSuggestions = document.getElementById('title-suggestions');
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+  setupSettingsToggle();
   setupThemeToggle();
+  setupSettingsModal();
   setupTabs();
   setupAddForm();
   setupEditForm();
@@ -39,21 +44,34 @@ document.addEventListener('DOMContentLoaded', () => {
   setupSearchInput();
   setupUndoButton();
   setupUpcomingToggle();
+  loadSettings();
   loadTopics();
   loadTitles();
   loadStats();
   loadDueCards();
 });
 
+// Settings Toggle
+function setupSettingsToggle() {
+  const settingsToggle = document.getElementById('settings-toggle');
+  settingsToggle.addEventListener('click', () => {
+    openSettingsModal();
+  });
+}
+
 // Theme Toggle
 function setupThemeToggle() {
   const themeToggle = document.getElementById('theme-toggle');
+  const themeLabel = document.getElementById('theme-label');
   const html = document.documentElement;
 
   // Load saved theme preference or default to light
   const savedTheme = localStorage.getItem('theme') || 'light';
   if (savedTheme === 'dark') {
     html.classList.add('dark-mode');
+    themeLabel.textContent = 'Dark';
+  } else {
+    themeLabel.textContent = 'Light';
   }
 
   // Toggle theme on button click
@@ -61,7 +79,139 @@ function setupThemeToggle() {
     html.classList.toggle('dark-mode');
     const isDark = html.classList.contains('dark-mode');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    themeLabel.textContent = isDark ? 'Dark' : 'Light';
   });
+}
+
+// Settings Modal
+function setupSettingsModal() {
+  const retentionSlider = document.getElementById('retention-rate');
+  const retentionValue = document.getElementById('retention-value');
+
+  // Update retention rate display
+  retentionSlider.addEventListener('input', (e) => {
+    retentionValue.textContent = `${e.target.value}%`;
+  });
+
+  // Close modal when clicking outside
+  const modal = document.getElementById('settings-modal');
+  let mouseDownTarget = null;
+
+  modal.addEventListener('mousedown', (e) => {
+    mouseDownTarget = e.target;
+  });
+
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal && mouseDownTarget === modal) {
+      closeSettingsModal();
+    }
+    mouseDownTarget = null;
+  });
+}
+
+// Open Settings Modal
+function openSettingsModal() {
+  const modal = document.getElementById('settings-modal');
+  const retentionSlider = document.getElementById('retention-rate');
+  const retentionValue = document.getElementById('retention-value');
+
+  // Load current settings
+  retentionSlider.value = Math.round(fsrsSettings.requestRetention * 100);
+  retentionValue.textContent = `${Math.round(fsrsSettings.requestRetention * 100)}%`;
+
+  modal.style.display = 'flex';
+}
+
+// Close Settings Modal
+function closeSettingsModal() {
+  document.getElementById('settings-modal').style.display = 'none';
+}
+
+// Save Settings
+async function saveSettings() {
+  const retentionSlider = document.getElementById('retention-rate');
+
+  // Update local settings
+  fsrsSettings.requestRetention = parseInt(retentionSlider.value) / 100;
+
+  // Save to localStorage
+  localStorage.setItem('fsrsSettings', JSON.stringify(fsrsSettings));
+
+  // Send to server
+  try {
+    const response = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fsrsSettings)
+    });
+
+    if (!response.ok) throw new Error('Failed to save settings');
+
+    showToast('Settings saved successfully!');
+    closeSettingsModal();
+
+    // Reload due cards with new settings
+    loadDueCards();
+    loadStats();
+  } catch (error) {
+    console.error('Error saving settings:', error);
+    showToast('Failed to save settings', 'error');
+  }
+}
+
+// Recalculate All Cards
+async function recalculateAllCards() {
+  if (!confirm('This will recalculate all cards based on their review history and current settings. Continue?')) {
+    return;
+  }
+
+  try {
+    const response = await fetch('/api/cards/recalculate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+
+    if (!response.ok) throw new Error('Failed to recalculate cards');
+
+    const result = await response.json();
+    showToast(`Successfully recalculated ${result.updated} cards!`);
+
+    // Reload stats and cards
+    loadDueCards();
+    loadStats();
+    loadAllCards();
+  } catch (error) {
+    console.error('Error recalculating cards:', error);
+    showToast('Failed to recalculate cards', 'error');
+  }
+}
+
+// Load Settings
+async function loadSettings() {
+  try {
+    // Try to load from server first
+    const response = await fetch('/api/settings');
+    if (response.ok) {
+      const serverSettings = await response.json();
+      if (serverSettings.requestRetention) {
+        fsrsSettings = serverSettings;
+        localStorage.setItem('fsrsSettings', JSON.stringify(fsrsSettings));
+        return;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading settings from server:', error);
+  }
+
+  // Fall back to localStorage
+  const savedSettings = localStorage.getItem('fsrsSettings');
+  if (savedSettings) {
+    try {
+      fsrsSettings = JSON.parse(savedSettings);
+    } catch (error) {
+      console.error('Error loading settings from localStorage:', error);
+    }
+  }
 }
 
 // Tab Navigation
