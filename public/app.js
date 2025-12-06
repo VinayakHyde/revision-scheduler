@@ -785,6 +785,13 @@ function updateUpcomingTopics() {
   upcomingContainer.style.display = 'block';
   upcomingCount.textContent = `${remainingCards.length} more topic${remainingCards.length === 1 ? '' : 's'} to review`;
 
+  // Show list by default
+  upcomingList.style.display = 'block';
+  const toggleBtn = document.getElementById('toggle-upcoming');
+  if (toggleBtn) {
+    toggleBtn.classList.add('expanded');
+  }
+
   // Populate the list
   upcomingList.innerHTML = remainingCards.map(card => `
     <div class="upcoming-item" data-card-id="${card._id}" style="border-left-color: ${card.topicColor || '#6366f1'};">
@@ -1062,16 +1069,78 @@ function renderAllCards(cards) {
         `;
       }).join('');
 
+      // Count how many are due today
+      const now = new Date();
+      const dueToday = topicCards.filter(card => new Date(card.nextReview) <= now).length;
+
+      let countText = `${topicCards.length} card${topicCards.length === 1 ? '' : 's'}`;
+      if (dueToday > 0) {
+        countText += ` (${dueToday} due)`;
+      }
+
       return `
-        <div class="topic-group">
+        <div class="topic-group collapsed" data-topic="${escapeHtml(topic)}">
           <h2 class="topic-group-header" style="border-bottom-color: ${topicColor};">
             <span class="topic-group-badge" style="background-color: ${topicColor};">${escapeHtml(topic)}</span>
+            <span class="topic-count">${countText}</span>
+            <svg class="topic-toggle-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
           </h2>
-          ${cardsHtml}
+          <div class="topic-group-cards">
+            ${cardsHtml}
+          </div>
         </div>
       `;
     })
     .join('');
+
+  // Add click handlers for topic group headers to toggle collapse/expand
+  setupTopicGroupToggles();
+}
+
+// Setup topic group toggle functionality
+function setupTopicGroupToggles() {
+  const topicHeaders = document.querySelectorAll('.topic-group-header');
+
+  topicHeaders.forEach(header => {
+    header.addEventListener('click', () => {
+      const topicGroup = header.parentElement;
+      const cardsContainer = topicGroup.querySelector('.topic-group-cards');
+      const toggleIcon = header.querySelector('.topic-toggle-icon');
+
+      // Toggle collapsed state
+      topicGroup.classList.toggle('collapsed');
+
+      // Save expanded state to localStorage (since default is collapsed)
+      const topic = topicGroup.dataset.topic;
+      const expandedTopics = JSON.parse(localStorage.getItem('expandedTopics') || '[]');
+
+      if (!topicGroup.classList.contains('collapsed')) {
+        // Topic is expanded
+        if (!expandedTopics.includes(topic)) {
+          expandedTopics.push(topic);
+        }
+      } else {
+        // Topic is collapsed
+        const index = expandedTopics.indexOf(topic);
+        if (index > -1) {
+          expandedTopics.splice(index, 1);
+        }
+      }
+
+      localStorage.setItem('expandedTopics', JSON.stringify(expandedTopics));
+    });
+  });
+
+  // Restore expanded state from localStorage (default is collapsed)
+  const expandedTopics = JSON.parse(localStorage.getItem('expandedTopics') || '[]');
+  expandedTopics.forEach(topic => {
+    const topicGroup = document.querySelector(`.topic-group[data-topic="${CSS.escape(topic)}"]`);
+    if (topicGroup) {
+      topicGroup.classList.remove('collapsed');
+    }
+  });
 }
 
 // Edit Card
