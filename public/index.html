@@ -127,19 +127,19 @@
           <div class="rating-buttons">
             <button class="btn btn-again" data-rating="1">
               <span class="rating-label">Again</span>
-              <span class="rating-desc">Forgot</span>
+              <span class="rating-time">...</span>
             </button>
             <button class="btn btn-hard" data-rating="2">
               <span class="rating-label">Hard</span>
-              <span class="rating-desc">Difficult</span>
+              <span class="rating-time">...</span>
             </button>
             <button class="btn btn-good" data-rating="3">
               <span class="rating-label">Good</span>
-              <span class="rating-desc">Normal</span>
+              <span class="rating-time">...</span>
             </button>
             <button class="btn btn-easy" data-rating="4">
               <span class="rating-label">Easy</span>
-              <span class="rating-desc">Easy!</span>
+              <span class="rating-time">...</span>
             </button>
           </div>
           <div class="review-actions">
@@ -266,7 +266,16 @@
         <input type="hidden" id="edit-card-id">
         <div class="form-group">
           <label for="edit-topic">Topic / Category</label>
-          <input type="text" id="edit-topic" readonly>
+          <div class="dropdown-container">
+            <input type="text" id="edit-topic" placeholder="Select or type a new category" required autocomplete="off">
+            <div class="dropdown-arrow">▼</div>
+            <div id="edit-topic-dropdown" class="dropdown-menu" style="display: none;">
+              <div id="edit-topic-options"></div>
+            </div>
+          </div>
+          <div id="edit-selected-topic-preview" class="topic-preview" style="display: none;">
+            <span class="topic-preview-badge" id="edit-preview-badge"></span>
+          </div>
         </div>
         <div class="form-group">
           <label for="edit-title">Title / What You Learned</label>

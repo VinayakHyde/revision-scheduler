@@ -647,6 +647,64 @@ function showNoReviews() {
   noReviews.style.display = 'block';
 }
 
+// Load scheduling info for a card and update buttons
+async function loadSchedulingInfo(cardId) {
+  try {
+    const response = await fetch(`/api/cards/${cardId}/scheduling`);
+    if (!response.ok) throw new Error('Failed to load scheduling info');
+
+    const schedulingInfo = await response.json();
+
+    // Update buttons with next review times
+    const ratingButtons = document.querySelectorAll('.rating-buttons .btn');
+    ratingButtons.forEach(button => {
+      const rating = parseInt(button.dataset.rating);
+      const nextReview = new Date(schedulingInfo[rating]);
+      const timeText = formatSchedulingTime(nextReview);
+
+      const timeSpan = button.querySelector('.rating-time');
+      if (timeSpan) {
+        timeSpan.textContent = timeText;
+      }
+    });
+  } catch (error) {
+    console.error('Error loading scheduling info:', error);
+    // Set fallback text if loading fails
+    const ratingButtons = document.querySelectorAll('.rating-buttons .btn');
+    ratingButtons.forEach(button => {
+      const timeSpan = button.querySelector('.rating-time');
+      if (timeSpan && timeSpan.textContent === '...') {
+        timeSpan.textContent = '?';
+      }
+    });
+  }
+}
+
+// Format time for scheduling display (similar to Anki)
+function formatSchedulingTime(date) {
+  const now = new Date();
+  const diffMs = date - now;
+  const diffMins = Math.round(diffMs / (1000 * 60));
+  const diffHours = Math.round(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+  const diffMonths = Math.round(diffMs / (1000 * 60 * 60 * 24 * 30));
+  const diffYears = Math.round(diffMs / (1000 * 60 * 60 * 24 * 365));
+
+  if (diffMins < 1) {
+    return '<1m';
+  } else if (diffMins < 60) {
+    return `${diffMins}m`;
+  } else if (diffHours < 24) {
+    return `${diffHours}h`;
+  } else if (diffDays < 30) {
+    return `${diffDays}d`;
+  } else if (diffMonths < 12) {
+    return `${diffMonths}mo`;
+  } else {
+    return `${diffYears}y`;
+  }
+}
+
 // Show Current Review Card
 function showReviewCard() {
   if (currentReviewIndex >= currentReviewCards.length) {
@@ -705,6 +763,9 @@ function showReviewCard() {
 
   // Update upcoming topics list
   updateUpcomingTopics();
+
+  // Load and display scheduling info for rating buttons
+  loadSchedulingInfo(card._id);
 }
 
 // Update Upcoming Topics List
@@ -1032,6 +1093,19 @@ async function editCard(cardId) {
     document.getElementById('edit-title').value = card.title;
     document.getElementById('edit-content').value = card.content || '';
 
+    // Initialize topic preview for existing topic
+    const existingTopic = availableTopics.find(t => t.name.toLowerCase() === card.topic.toLowerCase());
+    const editPreview = document.getElementById('edit-selected-topic-preview');
+    const editPreviewBadge = document.getElementById('edit-preview-badge');
+
+    if (existingTopic) {
+      editPreview.style.display = 'block';
+      editPreviewBadge.textContent = existingTopic.name;
+      editPreviewBadge.style.backgroundColor = existingTopic.color;
+    } else {
+      editPreview.style.display = 'none';
+    }
+
     // Show the modal
     document.getElementById('edit-modal').style.display = 'flex';
   } catch (error) {
@@ -1044,6 +1118,8 @@ async function editCard(cardId) {
 function closeEditModal() {
   document.getElementById('edit-modal').style.display = 'none';
   document.getElementById('edit-form').reset();
+  document.getElementById('edit-selected-topic-preview').style.display = 'none';
+  document.getElementById('edit-topic-dropdown').style.display = 'none';
 }
 
 // Setup Edit Form
@@ -1053,20 +1129,28 @@ function setupEditForm() {
     e.preventDefault();
 
     const cardId = document.getElementById('edit-card-id').value;
+    const topic = document.getElementById('edit-topic').value;
     const title = document.getElementById('edit-title').value;
     const content = document.getElementById('edit-content').value;
+
+    // Get the topic color from existing topics
+    const existingTopic = availableTopics.find(t => t.name.toLowerCase() === topic.trim().toLowerCase());
+    const topicColor = existingTopic ? existingTopic.color : null;
 
     try {
       const response = await fetch(`/api/cards/${cardId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, content })
+        body: JSON.stringify({ topic, title, content, topicColor })
       });
 
       if (!response.ok) throw new Error('Failed to update card');
 
       showToast('Topic updated successfully!');
       closeEditModal();
+
+      // Reload topics in case a new one was created
+      await loadTopics();
 
       // Preserve search when reloading cards
       loadAllCards(true);
@@ -1078,6 +1162,9 @@ function setupEditForm() {
           // Reload the cards and update the current review
           await loadDueCards();
         }
+      } else {
+        // Also reload due cards to refresh upcoming list
+        await loadDueCards();
       }
     } catch (error) {
       console.error('Error updating card:', error);
@@ -1101,6 +1188,107 @@ function setupEditForm() {
     }
     mouseDownTarget = null;
   });
+
+  // Setup Edit Topic Dropdown
+  setupEditTopicDropdown();
+}
+
+// Setup Edit Topic Dropdown
+function setupEditTopicDropdown() {
+  const editTopicInput = document.getElementById('edit-topic');
+  const editDropdown = document.getElementById('edit-topic-dropdown');
+  const editDropdownOptions = document.getElementById('edit-topic-options');
+  const editPreview = document.getElementById('edit-selected-topic-preview');
+  const editPreviewBadge = document.getElementById('edit-preview-badge');
+
+  // Show dropdown on focus
+  editTopicInput.addEventListener('focus', () => {
+    renderEditDropdownOptions();
+    editDropdown.style.display = 'block';
+  });
+
+  // Filter dropdown on input
+  editTopicInput.addEventListener('input', () => {
+    const inputValue = editTopicInput.value.trim();
+
+    renderEditDropdownOptions(inputValue);
+    editDropdown.style.display = 'block';
+
+    const existingTopic = availableTopics.find(t => t.name.toLowerCase() === inputValue.toLowerCase());
+
+    if (existingTopic) {
+      // Existing topic - show preview
+      editPreview.style.display = 'block';
+      editPreviewBadge.textContent = existingTopic.name;
+      editPreviewBadge.style.backgroundColor = existingTopic.color;
+    } else {
+      // New topic or empty - hide preview
+      editPreview.style.display = 'none';
+    }
+  });
+
+  // Show dropdown on arrow click
+  const editDropdownArrow = document.querySelector('#edit-topic-dropdown').previousElementSibling;
+  if (editDropdownArrow && editDropdownArrow.classList.contains('dropdown-arrow')) {
+    editDropdownArrow.addEventListener('click', () => {
+      if (editDropdown.style.display === 'none') {
+        renderEditDropdownOptions();
+        editDropdown.style.display = 'block';
+        editTopicInput.focus();
+      } else {
+        editDropdown.style.display = 'none';
+      }
+    });
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#edit-topic-dropdown') &&
+        !e.target.closest('#edit-topic') &&
+        e.target !== editDropdownArrow) {
+      editDropdown.style.display = 'none';
+    }
+  });
+}
+
+// Render edit dropdown options
+function renderEditDropdownOptions(filter = '') {
+  const editDropdownOptions = document.getElementById('edit-topic-options');
+  const filterLower = filter.toLowerCase();
+
+  const filteredTopics = availableTopics.filter(topic =>
+    topic.name.toLowerCase().includes(filterLower)
+  );
+
+  if (filteredTopics.length === 0) {
+    editDropdownOptions.innerHTML = '<div class="dropdown-empty">No existing categories. Type to create a new one.</div>';
+  } else {
+    editDropdownOptions.innerHTML = filteredTopics.map(topic => `
+      <div class="dropdown-item" data-topic="${escapeHtml(topic.name)}" data-color="${topic.color}">
+        <span class="dropdown-badge" style="background-color: ${topic.color};">${escapeHtml(topic.name)}</span>
+      </div>
+    `).join('');
+
+    // Add click handlers to dropdown items
+    editDropdownOptions.querySelectorAll('.dropdown-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const topicName = item.dataset.topic;
+        const topicColor = item.dataset.color;
+
+        document.getElementById('edit-topic').value = topicName;
+
+        // Show preview
+        const editPreview = document.getElementById('edit-selected-topic-preview');
+        const editPreviewBadge = document.getElementById('edit-preview-badge');
+        editPreview.style.display = 'block';
+        editPreviewBadge.textContent = topicName;
+        editPreviewBadge.style.backgroundColor = topicColor;
+
+        // Hide dropdown
+        document.getElementById('edit-topic-dropdown').style.display = 'none';
+      });
+    });
+  }
 }
 
 // Delete Card

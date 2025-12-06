@@ -109,8 +109,10 @@ app.get('/api/cards/due', async (req, res) => {
   try {
     const db = getDB();
     const now = new Date();
+    // Include cards due within the next 10 minutes to keep short-interval cards in session
+    const soonThreshold = new Date(now.getTime() + 10 * 60 * 1000); // 10 minutes from now
     const cards = await db.collection('cards')
-      .find({ nextReview: { $lte: now } })
+      .find({ nextReview: { $lte: soonThreshold } })
       .sort({ nextReview: 1 })
       .toArray();
     res.json(cards);
@@ -175,6 +177,47 @@ app.post('/api/cards', async (req, res) => {
   } catch (error) {
     console.error('Error creating card:', error);
     res.status(500).json({ error: 'Failed to create card' });
+  }
+});
+
+// Get scheduling info for all rating options
+app.get('/api/cards/:id/scheduling', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: 'Invalid card ID' });
+    }
+
+    const db = getDB();
+    const card = await db.collection('cards').findOne({ _id: new ObjectId(id) });
+
+    if (!card) {
+      return res.status(404).json({ error: 'Card not found' });
+    }
+
+    const now = new Date();
+
+    // Calculate next review for all rating options
+    const schedulingInfo = {
+      [Rating.Again]: f.next(card.fsrsCard, now, Rating.Again),
+      [Rating.Hard]: f.next(card.fsrsCard, now, Rating.Hard),
+      [Rating.Good]: f.next(card.fsrsCard, now, Rating.Good),
+      [Rating.Easy]: f.next(card.fsrsCard, now, Rating.Easy)
+    };
+
+    // Extract just the due dates for each rating
+    const response = {
+      1: schedulingInfo[Rating.Again].card.due,
+      2: schedulingInfo[Rating.Hard].card.due,
+      3: schedulingInfo[Rating.Good].card.due,
+      4: schedulingInfo[Rating.Easy].card.due
+    };
+
+    res.json(response);
+  } catch (error) {
+    console.error('Error getting scheduling info:', error);
+    res.status(500).json({ error: 'Failed to get scheduling info' });
   }
 });
 
@@ -343,10 +386,14 @@ app.get('/api/stats', async (req, res) => {
 app.put('/api/cards/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, content } = req.body;
+    const { topic, title, content, topicColor } = req.body;
 
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ error: 'Invalid card ID' });
+    }
+
+    if (!topic || !topic.trim()) {
+      return res.status(400).json({ error: 'Topic is required' });
     }
 
     if (!title || !title.trim()) {
@@ -354,7 +401,19 @@ app.put('/api/cards/:id', async (req, res) => {
     }
 
     const db = getDB();
+
+    // Get the topic color from topics collection if not provided
+    const topicName = topic.trim();
+    let colorToUse = topicColor;
+
+    if (!colorToUse) {
+      const topicDoc = await db.collection('topics').findOne({ name: topicName });
+      colorToUse = topicDoc?.color || '#6366f1';
+    }
+
     const updateData = {
+      topic: topicName,
+      topicColor: colorToUse,
       title: title.trim(),
       content: content?.trim() || ''
     };

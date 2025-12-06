@@ -760,6 +760,13 @@ input[type="color"] {
   opacity: 0.8;
 }
 
+.rating-time {
+  font-size: 0.85rem;
+  opacity: 0.9;
+  font-weight: 500;
+  color: inherit;
+}
+
 .btn-again {
   background: var(--danger);
   color: white;
