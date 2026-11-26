@@ -732,7 +732,7 @@ function showReviewCard() {
 
   const contentEl = document.getElementById('review-content');
   if (card.content) {
-    contentEl.innerHTML = linkifyText(card.content);
+    contentEl.innerHTML = renderMarkdown(card.content);
     contentEl.style.display = 'block';
   } else {
     contentEl.style.display = 'none';
@@ -813,7 +813,7 @@ function updateUpcomingTopics() {
         </div>
       </div>
       <div class="upcoming-item-meta">Added ${formatDate(card.createdAt)}</div>
-      ${card.content ? `<div class="upcoming-item-notes" style="display: none;">${linkifyText(card.content)}</div>` : ''}
+      ${card.content ? `<div class="upcoming-item-notes" style="display: none;">${renderMarkdown(card.content)}</div>` : ''}
     </div>
   `).join('');
 
@@ -1053,7 +1053,7 @@ function renderAllCards(cards) {
                 <button class="btn-delete" onclick="deleteCard('${card._id}')">Delete</button>
               </div>
             </div>
-            ${card.content ? `<p class="card-item-content">${linkifyText(card.content)}</p>` : ''}
+            ${card.content ? `<div class="card-item-content">${renderMarkdown(card.content)}</div>` : ''}
             <div class="card-item-meta">
               <span>Added: ${formatDate(card.createdAt)}</span>
               <span class="${isDue ? 'due-badge' : ''}">
@@ -1440,7 +1440,36 @@ function escapeHtml(text) {
   return div.innerHTML;
 }
 
-// Convert URLs in text to clickable links
+// Render markdown text
+function renderMarkdown(text) {
+  if (!text) return '';
+
+  // Configure marked for security and to open links in new tab
+  const renderer = new marked.Renderer();
+  const originalLinkRenderer = renderer.link.bind(renderer);
+
+  renderer.link = function(href, title, text) {
+    const html = originalLinkRenderer(href, title, text);
+    return html.replace(/^<a /, '<a target="_blank" rel="noopener noreferrer" ');
+  };
+
+  marked.setOptions({
+    breaks: true, // Convert line breaks to <br>
+    gfm: true, // GitHub flavored markdown
+    headerIds: false, // Don't add IDs to headers
+    mangle: false, // Don't escape autolinked email addresses
+    renderer: renderer
+  });
+
+  try {
+    return marked.parse(text);
+  } catch (error) {
+    console.error('Error parsing markdown:', error);
+    return escapeHtml(text);
+  }
+}
+
+// Convert URLs in text to clickable links (legacy - now using markdown)
 function linkifyText(text) {
   if (!text) return '';
 
